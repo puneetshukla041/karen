@@ -1,0 +1,4 @@
+# Store text files with LF so Windows and other machines agree.
+* text=auto eol=lf
+*.ico binary
+*.png binary
