@@ -1,34 +1,38 @@
-# My Prep
+# Karen
 
-Track government job exams you are eligible for, plus the ones you have applied to. Dark theme. Built with Next.js 16 (App Router, TypeScript) and MongoDB.
+Your government exam co-pilot. Karen shows which recruitments you can apply for right now, what closes this week, and where each of your applications stands. Built with Next.js 16 and MongoDB.
 
-**Module 1: My Exams**
+## What's inside
 
-- Researched notifications in five tabs: open now, upcoming, closed with the exam still pending, and more. Each one shows vacancies, apply window, exam date, age limit, qualification, pay, fee, selection process, difficulty and sources.
-- Eligibility is calculated from your profile. Your date of birth is checked against each exam's age limit and its "age as on" date.
-- Per-exam application tracker: status, application number, date applied, fee paid, exam centre, notes. Saved in MongoDB.
+- **Today**: what to apply for next, sorted by last date, with one-tap "Mark applied". Also shows exams opening soon and your pipeline at a glance.
+- **Explore**: every researched notification with search, status tabs (Open / Upcoming / Exam pending / All), sector chips, an eligible-only filter and sorting. Filters live in the URL, so back/forward and shared links work.
+- **Exam page**: key facts, a timeline, an eligibility check against your profile, pay and selection steps, sources, and your application record (stage, application no., centre, fee, notes).
+- **Tracker**: a board of everything you follow, grouped by stage. Change a stage right from the card.
+- **Profile**: date of birth, category and education, used for every age-limit check.
+- **Light, dark or system theme**, from the switch in the sidebar or header.
+
+Everything, including the theme, is stored in MongoDB and read on every request. Nothing is kept in browser storage, so your phone and laptop always show the same data.
 
 ## Run it
 
 ```bash
 npm install
-npm run db      # terminal 1: local MongoDB on 127.0.0.1:27017, data kept in .mongo-data/
-npm run seed    # once, and again after src/data/exams.json changes
-npm run dev     # terminal 2: http://localhost:3000
+npm run dev     # http://localhost:3000, and http://<this-PC's-IP>:3000 from other devices on your Wi-Fi/Tailscale
 ```
 
-To use MongoDB Atlas instead, put your `mongodb+srv://...` URI in `.env.local` as `MONGODB_URI` and skip `npm run db`.
+`.env.local` needs:
+
+```
+MONGODB_URI=mongodb+srv://...     # MongoDB Atlas (or mongodb://127.0.0.1:27017 with `npm run db`)
+MONGODB_DB=my-prep                # database name; kept as-is so existing data stays
+```
+
+With Atlas, allow your network's IP under Network Access, or the app shows "Can't reach the database".
+
+On first run with an empty database, Karen loads the bundled research (`src/data/exams.json`) into the `exams` collection. After editing that file, run `npm run seed`. Your applications and profile are never touched by a seed.
 
 For production: `npm run build && npm start`, or deploy to Vercel with `MONGODB_URI` and `MONGODB_DB` set.
 
-## How it stays fast
-
-- Exam data is read with `"use cache"` (1 hour, tag `exams`) and prerendered into the static shell.
-- Only your personal data (applications, profile) is read per request, streamed in behind `<Suspense>` skeletons.
-- Search, tabs and filters run in the browser over data already loaded, so they need no network round-trip.
-
-## Updating the research
-
-All notification data lives in `src/data/exams.json`. Edit it, run `npm run seed`, then restart `npm run dev`. Your applications and profile are never touched by a seed.
+## Data accuracy
 
 Dates and vacancy counts come from official sites where those could be reached, otherwise from coaching and news portals. Each exam shows its confidence level and source links. Confirm on the official site before paying any fee.

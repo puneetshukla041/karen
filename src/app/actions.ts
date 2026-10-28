@@ -1,28 +1,58 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { getDb, hasDatabase, USER_ID } from "@/lib/db";
-import { APPLICATION_STATUSES, CATEGORIES, type ApplicationStatus, type Category } from "@/lib/types";
+import { getDb, USER_ID } from "@/lib/db";
+import { todayIST } from "@/lib/eligibility";
+import { APPLICATION_STATUSES, CATEGORIES, THEMES, type ApplicationStatus, type Category, type Theme } from "@/lib/types";
 
 export type ActionState = { ok: boolean; message: string } | null;
 
 const str = (fd: FormData, key: string, max = 500) => String(fd.get(key) ?? "").trim().slice(0, max);
 const isDate = (s: string) => s === "" || /^\d{4}-\d{2}-\d{2}$/.test(s);
+const isSlug = (s: string) => /^[a-z0-9-]{1,120}$/.test(s);
 
-function noDb(): ActionState {
-  return { ok: false, message: "MongoDB is not connected. Set MONGODB_URI in .env.local and restart." };
+/** One-tap tracking from lists: sets the status (null stops tracking) and keeps every other field. */
+export async function setApplicationStatus(examSlug: string, status: ApplicationStatus | null): Promise<ActionState> {
+  if (!isSlug(examSlug) || (status !== null && !APPLICATION_STATUSES.includes(status))) {
+    return { ok: false, message: "Invalid input." };
+  }
+  const col = (await getDb()).collection("applications");
+  const filter = { userId: USER_ID, examSlug };
+  if (status === null) {
+    await col.deleteOne(filter);
+  } else {
+    const existing = await col.findOne(filter, { projection: { appliedOn: 1 } });
+    await col.updateOne(
+      filter,
+      {
+        $set: {
+          status,
+          updatedAt: new Date().toISOString(),
+          ...(status === "applied" && !existing?.appliedOn ? { appliedOn: todayIST() } : {}),
+        },
+        $setOnInsert: {
+          applicationNo: "",
+          examCenter: "",
+          feePaid: false,
+          notes: "",
+          ...(status === "applied" ? {} : { appliedOn: "" }),
+        },
+      },
+      { upsert: true },
+    );
+  }
+  refresh();
+  return { ok: true, message: status ? "Updated." : "Stopped tracking." };
 }
 
 export async function saveApplication(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  if (!hasDatabase()) return noDb();
   const examSlug = str(fd, "examSlug", 120);
   const status = str(fd, "status", 40) as ApplicationStatus;
   const appliedOn = str(fd, "appliedOn", 10);
-  if (!examSlug || !APPLICATION_STATUSES.includes(status) || !isDate(appliedOn)) {
-    return { ok: false, message: "Invalid input." };
+  if (!isSlug(examSlug) || !APPLICATION_STATUSES.includes(status) || !isDate(appliedOn)) {
+    return { ok: false, message: "Please check the fields and try again." };
   }
-  const db = await getDb();
-  await db.collection("applications").updateOne(
+  await (await getDb()).collection("applications").updateOne(
     { userId: USER_ID, examSlug },
     {
       $set: {
@@ -38,27 +68,17 @@ export async function saveApplication(_prev: ActionState, fd: FormData): Promise
     { upsert: true },
   );
   refresh();
-  return { ok: true, message: "Saved." };
-}
-
-export async function removeApplication(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  if (!hasDatabase()) return noDb();
-  const db = await getDb();
-  await db.collection("applications").deleteOne({ userId: USER_ID, examSlug: str(fd, "examSlug", 120) });
-  refresh();
-  return { ok: true, message: "Removed from My Exams." };
+  return { ok: true, message: "Saved" };
 }
 
 export async function saveProfile(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  if (!hasDatabase()) return noDb();
   const dob = str(fd, "dob", 10);
   const category = str(fd, "category", 10) as Category;
   const gender = str(fd, "gender", 10);
   if (!isDate(dob) || !CATEGORIES.includes(category) || !["Male", "Female", "Other"].includes(gender)) {
-    return { ok: false, message: "Invalid input." };
+    return { ok: false, message: "Please check the fields and try again." };
   }
-  const db = await getDb();
-  await db.collection("profiles").updateOne(
+  await (await getDb()).collection("profiles").updateOne(
     { userId: USER_ID },
     {
       $set: {
@@ -74,5 +94,10 @@ export async function saveProfile(_prev: ActionState, fd: FormData): Promise<Act
     { upsert: true },
   );
   refresh();
-  return { ok: true, message: "Profile saved. Eligibility updated." };
+  return { ok: true, message: "Saved. Eligibility updated everywhere." };
+}
+
+export async function saveTheme(theme: Theme): Promise<void> {
+  if (!THEMES.includes(theme)) return;
+  await (await getDb()).collection("profiles").updateOne({ userId: USER_ID }, { $set: { theme } }, { upsert: true });
 }

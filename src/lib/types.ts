@@ -90,6 +90,7 @@ export type Profile = {
   state: string;
   qualification: string;
   graduationYear: string;
+  theme: Theme;
 };
 
 export const DEFAULT_PROFILE: Profile = {
@@ -100,4 +101,8 @@ export const DEFAULT_PROFILE: Profile = {
   state: "Rajasthan",
   qualification: "B.Tech Computer Science (AI/ML)",
   graduationYear: "",
+  theme: "system",
 };
+
+export const THEMES = ["system", "light", "dark"] as const;
+export type Theme = (typeof THEMES)[number];

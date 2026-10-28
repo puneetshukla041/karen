@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileForm } from "@/components/ProfileForm";
-import { getProfile } from "@/lib/data";
-import { hasDatabase } from "@/lib/db";
+import { PageHeader, Skeleton } from "@/components/ui";
+import { getBoard } from "@/lib/data";
+import { ageOn } from "@/lib/eligibility";
 
 export const metadata: Metadata = { title: "Profile" };
 
 export default function ProfilePage() {
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-      <p className="mt-1 mb-6 text-sm text-muted">Used to check age limits and eligibility on every exam.</p>
-      <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-surface" />}>
+    <div className="max-w-3xl">
+      <PageHeader title="Profile" subtitle="Karen uses this to check every exam's age limit and eligibility. Saved to your account, so it syncs across devices." />
+      <Suspense fallback={<Skeleton className="h-[32rem]" />}>
         <ProfileLoader />
       </Suspense>
     </div>
@@ -19,5 +19,30 @@ export default function ProfilePage() {
 }
 
 async function ProfileLoader() {
-  return <ProfileForm profile={await getProfile()} canSave={hasDatabase()} />;
+  const { profile, views, today } = await getBoard();
+  const eligible = views.filter((v) => v.elig.verdict === "yes").length;
+  const check = views.filter((v) => v.elig.verdict === "check").length;
+  return (
+    <div className="space-y-5">
+      {profile.dob && (
+        <div className="card grid grid-cols-3 divide-x divide-line">
+          <Summary label="Age today" value={String(ageOn(profile.dob, today))} />
+          <Summary label="Eligible" value={`${eligible}`} sub={`of ${views.length}`} />
+          <Summary label="Check rules" value={`${check}`} />
+        </div>
+      )}
+      <ProfileForm profile={profile} />
+    </div>
+  );
+}
+
+function Summary({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="p-4">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+        {value} {sub && <span className="text-sm font-normal text-muted">{sub}</span>}
+      </p>
+    </div>
+  );
 }

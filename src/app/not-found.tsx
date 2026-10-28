@@ -1,12 +1,19 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/ui";
 
 export default function NotFound() {
   return (
-    <div className="py-20 text-center">
-      <h1 className="text-xl font-semibold">Not found</h1>
-      <Link href="/exams" className="mt-3 inline-block text-sm text-accent">
-        Back to My Exams
-      </Link>
+    <div className="mx-auto mt-10 max-w-md">
+      <EmptyState
+        icon="compass"
+        title="Page not found"
+        body="That exam or page doesn't exist anymore."
+        action={
+          <Link href="/exams" className="btn-primary">
+            Back to Explore
+          </Link>
+        }
+      />
     </div>
   );
 }
