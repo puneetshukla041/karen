@@ -1,41 +1,34 @@
-# BCI Study Platform
+# My Prep
 
-A minimal Next.js study platform for Rajasthan Basic Computer Instructor preparation.
+Track government job exams you are eligible for, plus the ones you have applied to. Dark theme. Built with Next.js 16 (App Router, TypeScript) and MongoDB.
 
-## Main updates
+**Module 1: My Exams**
 
-- Category filter removed from Tests page.
-- Date filter defaults to today and opens calendar on click.
-- Professional low-noise header without heavy branding.
-- New `/syllabus` page for Paper 1 syllabus and 20-day learning plan.
-- New `/learn` section with topic-wise notes, memory tables, PYQ-style traps, micro quiz, personal notes and bookmark/progress storage.
-- Topic JSON export endpoint: `/api/learn/topic-json?slug=<topic-slug>`.
-- Skip button moves to next question.
-- Pointer cursor on buttons, links, date inputs and clickable UI.
+- Researched notifications in five tabs: open now, upcoming, closed with the exam still pending, and more. Each one shows vacancies, apply window, exam date, age limit, qualification, pay, fee, selection process, difficulty and sources.
+- Eligibility is calculated from your profile. Your date of birth is checked against each exam's age limit and its "age as on" date.
+- Per-exam application tracker: status, application number, date applied, fee paid, exam centre, notes. Saved in MongoDB.
 
-## Vercel settings
-
-Framework: Next.js
-Install command: `npm install`
-Build command: `npm run build`
-Root directory: `./`
-
-## Environment variables
-
-```env
-MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@cluster0.xxxxx.mongodb.net/bci-pro-exam-platform?retryWrites=true&w=majority&appName=Cluster0
-NEXT_PUBLIC_DEFAULT_USER_ID=default-user
-NEXT_PUBLIC_STUDY_START_DATE=2026-03-10
-NEXT_PUBLIC_STUDY_DAYS=65
-NEXT_PUBLIC_STUDY_TIME_ZONE=Asia/Kolkata
-APP_RATE_LIMIT_PER_MINUTE=120
-```
-
-For local development:
+## Run it
 
 ```bash
 npm install
-npm run dev
+npm run db      # terminal 1: local MongoDB on 127.0.0.1:27017, data kept in .mongo-data/
+npm run seed    # once, and again after src/data/exams.json changes
+npm run dev     # terminal 2: http://localhost:3000
 ```
 
-For Vercel, add environment variables in the Vercel dashboard. Do not upload `.env.local`.
+To use MongoDB Atlas instead, put your `mongodb+srv://...` URI in `.env.local` as `MONGODB_URI` and skip `npm run db`.
+
+For production: `npm run build && npm start`, or deploy to Vercel with `MONGODB_URI` and `MONGODB_DB` set.
+
+## How it stays fast
+
+- Exam data is read with `"use cache"` (1 hour, tag `exams`) and prerendered into the static shell.
+- Only your personal data (applications, profile) is read per request, streamed in behind `<Suspense>` skeletons.
+- Search, tabs and filters run in the browser over data already loaded, so they need no network round-trip.
+
+## Updating the research
+
+All notification data lives in `src/data/exams.json`. Edit it, run `npm run seed`, then restart `npm run dev`. Your applications and profile are never touched by a seed.
+
+Dates and vacancy counts come from official sites where those could be reached, otherwise from coaching and news portals. Each exam shows its confidence level and source links. Confirm on the official site before paying any fee.
